@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Article = require("../models/article")
 const Scategorie = require("../models/scategorie")
+const {authorizeRoles} = require("../middleware/authorizeRoles")
 const {verifyToken} =require("../middleware/verify-token")
 // afficher la liste des articles.
-router.get('/', verifyToken,async (req, res,) => {
+router.get('/',verifyToken,authorizeRoles("admin"),async (req, res,) => {
     try {
         const articles = await Article.find({}, null, {
             sort: {
