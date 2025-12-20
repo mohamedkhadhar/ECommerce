@@ -1,53 +1,28 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
-const bcrypt = require('bcrypt')
-
-
-const userSchema = new mongoose.Schema({
-    email: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    password: {
-        type: String,
-        required: true,
-    },
-    firstname: {
-        type: String,
-        required: true,
-    },
-    lastname: {
-        type: String,
-        required: true,
-    },
+const userSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    firstname: { type: String, required: true },
+    lastname: { type: String, required: true },
     role: {
-        type: String,
-        enum: ["user", "admin"],
-        default: "user"
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
     },
-    isActive: {
+    isActive: { type: Boolean, default: false },
+    avatar: { type: String },
+  },
+  { timestamps: true }
+);
 
-        type: Boolean,
-        default: false,
-        required: false
-    },
-    avatar: {
-        type: String,
-        required: false
-    },
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return ;
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(this.password, salt);
+  this.password = hashedPassword;
+});
 
-},
-    {
-        timestamps: true,
-    },
-)
-userSchema.pre('save', async function(next) {
-if (!this.isModified('password')) return 
-const salt = await bcrypt.genSalt(10)
-const hashedPassword = await bcrypt.hash(this.password, salt)
-this.password = hashedPassword
-
-})
-
-module.exports = mongoose.model('User', userSchema)
+module.exports = mongoose.model("User", userSchema);

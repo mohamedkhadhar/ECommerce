@@ -1,169 +1,194 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const User = require("../models/user")
-const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken')
-const nodemailer = require('nodemailer');
-
+const User = require("../models/user");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 var transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: 'mohamedkhadhar2000@gmail.com',
-        pass: 'mfmf olan zpks wstw'
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
+  service: "gmail",
+  auth: {
+    user: "amaljridi66@gmail.com",
+    pass: "zqqa hskx isck eaua",
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
 });
 // créer un nouvel utilisateur
-router.post('/register', async (req, res) => {
-    try {
-        let { email, password, firstname, lastname } = req.body
-        const user = await User.findOne({ email })
-        if (user) return res.status(404).send({
-            success: false, message:
+router.post("/register", async (req, res) => {
+  try {
+    let { email, password, firstname, lastname } = req.body;
+    const user = await User.findOne({ email });
+    if (user)
+      return res
+        .status(404)
+        .send({ success: false, message: "User already exists" });
 
-                "User already exists"
-        })
+    const newUser = new User({ email, password, firstname, lastname });
+    const createdUser = await newUser.save();
 
-        const newUser = new User({ email, password, firstname, lastname })
-        const createdUser = await newUser.save()
-
-        // Envoyer l'e-mail de confirmation de l'inscription
-        var mailOption = {
-            from: '"verify your email " <esps421@gmail.com>',
-            to: newUser.email,
-            subject: 'vérification your email ',
-            html: `<h2>${newUser.firstname}! thank you for registreting on our website</h2>
+    // Envoyer l'e-mail de confirmation de l'inscription
+    var mailOption = {
+      from: '"verify your email " <amaljridi66@gmail.com>',
+      to: newUser.email,
+      subject: "vérification your email ",
+      html: `<h2>${newUser.firstname}! thank you for registreting on our website</h2>
 <h4>please verify your email to procced.. </h4>
 <a
 href="http://${req.headers.host}/api/users/status/edit?email=${newUser.email}">click
-here</a>`
-        }
-        transporter.sendMail(mailOption, function (error, info) {
-            if (error) {
-                console.log(error)
-            }
-            else {
-                console.log('verification email sent to your gmail account ')
-            }
-        })
-        return res.status(201).send({ success: true, message: "Accountcreated successfully", user: createdUser })
-    } catch (err) {
-        console.log(err)
-        res.status(404).send({ success: false, message: err })
-    }
+here</a>`,
+    };
+    transporter.sendMail(mailOption, function (error, info) {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log("verification email sent to your gmail account ");
+      }
+    });
+
+    return res.status(201).send({
+      success: true,
+      message: "Account created successfully",
+      user: createdUser,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(404).send({ success: false, message: err });
+  }
 });
 // afficher la liste des utilisateurs.
-router.get('/', async (req, res,) => {
-    try {
-        const users = await User.find().select("-password");
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(404).json({ message: error.message });
-    }
-
+router.get("/", async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(404).json({ message: error.message });
+  }
 });
-/**
-* as an admin i can disable or enable an account
-*/
-router.get('/status/edit/', async (req, res) => {
-    try {
-        let email = req.query.email
-        console.log(email)
-        let user = await User.findOne({ email })
-        user.isActive = !user.isActive
-        user.save()
-        res.status(200).send({ success: true, user })
-    } catch (err) {
-        return res.status(404).send({ success: false, message: err })
-    }
-})
+/* as an admin i can disable or enable an account
+ */
+router.get("/status/edit/", async (req, res) => {
+  try {
+    let email = req.query.email;
+    console.log(email);
+    let user = await User.findOne({ email });
+    user.isActive = !user.isActive;
+    user.save();
+    res.status(200).send({ success: true, user });
+  } catch (err) {
+    return res.status(404).send({ success: false, message: err });
+  }
+});
+router.get('/getallusers', async (req, res, )=> {
+try {
+const users = await User.find().select("-password");
+res.status(200).json(users);
+} catch (error) {
+res.status(404).json({ message: error.message });
+}
+});
+router.post('/getuserbyname', async (req, res) => {
+try {
+const { firstname } = req.body;
+if (!firstname) {
+return res.status(400).json({ message: "Le nom est requis" });
+}
+const user = await User.findOne({ firstname: firstname });
+if (!user) {
+return res.status(404).json({ message: "Utilisateur non trouvé" });
+}
+res.status(200).json(user);
+} catch (error) {
+res.status(500).json({ message: error.message });
+}
+});
+module.exports = router;
 // se connecter
-router.post('/login', async (req, res) => {
-    try {
-        let { email, password } = req.body
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(404).send({ success: false, message: "Allfields are required" })
-        }
+    const user = await User.findOne({ email })
+      .select("+password")
+      .select("+isActive");
 
-        let user = await User.findOne({
-            email
-        }).select('+password').select('+isActive')
+    if (!user)
+      return res.status(404).send({ success: false, message: "User not found" });
 
-        if (!user) {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(401).send({ success: false, message: "Wrong credentials" });
 
-            return res.status(404).send({ success: false, message: "Accountdoesn't exists" })
+    if (!user.isActive)
+      return res.status(403).send({ success: false, message: "Account inactive" });
 
-        } else {
+    const token = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-            let isCorrectPassword = await bcrypt.compare(password, user.password)
-            if (isCorrectPassword) {
+    delete user._doc.password;
 
-                delete user._doc.password
-                if (!user.isActive) return res.status(200).send({
-                    success:
-
-                        false, message: 'Your account is inactive, Please contact youradministrator'
-                })
-                const token = generateAccessToken(user);
-                const refreshToken = generateRefreshToken(user);
-
-                return res.status(200).send({ success: true, user, token, refreshToken })
-
-            } else {
-
-                return res.status(404).send({ success: false, message: "Please verify your credentials" })
-
-            }
-        }
-
-    } catch (err) {
-        return res.status(404).send({
-            success: false, message: err.message
-
-        })
-    }
-
+    res.status(200).send({
+      success: true,
+      user,
+      token,
+      refreshToken
+    });
+  } catch (err) {
+    res.status(500).send({ success: false, message: err.message });
+  }
 });
+
 //Access Token
 const generateAccessToken = (user) => {
-    return jwt.sign({ iduser: user._id, role: user.role }, process.env.SECRET, {
-        expiresIn: '60s'
-    })
-}
+  return jwt.sign({ iduser: user._id, role: user.role }, process.env.SECRET, {
+    expiresIn: "60s",
+  });
+};
 // Refresh
 function generateRefreshToken(user) {
-    return jwt.sign({ iduser: user._id, role: user.role },
-        process.env.REFRESH_TOKEN_SECRET, { expiresIn: '1y' })
+  return jwt.sign(
+    { iduser: user._id, role: user.role },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: "1y" }
+  );
 }
 //Refresh Route
-router.post('/refreshToken', async (req, res,) => {
-    console.log(req.body.refreshToken)
-    const refreshtoken = req.body.refreshToken;
-    if (!refreshtoken) {
-        return res.status(404).send({ success: false, message: 'Token Not Found' });
-    }
-    else {
-        jwt.verify(refreshtoken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
-            if (err) {
-                console.log(err)
-                return res.status(406).send({ success: false, message: 'Unauthorized' });
-            }
-            else {
-                const token = generateAccessToken(user);
-                const refreshToken = generateRefreshToken(user);
-                console.log("token-------", token);
-                res.status(200).send({
-                    success: true,
-                    token,
-                    refreshToken
-                })
-            }
-        });
-    }
+router.post("/refreshToken", async (req, res) => {
+  console.log(req.body.refreshToken);
 
+  27;
+  const refreshtoken = req.body.refreshToken;
+  if (!refreshtoken) {
+    return res.status(404).send({ success: false, message: "Token Not Found" });
+  } else {
+    jwt.verify(refreshtoken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+      if (err) {
+        console.log(err);
+        return res
+          .status(406)
+          .send({ success: false, message: "Unauthorized" });
+      } else {
+        const token = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+        console.log("token-------", token);
+        res.status(200).send({ success: true, token, refreshToken });
+      }
+    });
+  }
 });
-
+/**
+ * as an admin i can disable or enable an account
+ */
+router.get("/status/edit/", async (req, res) => {
+  try {
+    let email = req.query.email;
+    console.log(email);
+    let user = await User.findOne({ email });
+    user.isActive = !user.isActive;
+    user.save();
+    res.status(200).send({ success: true, user });
+  } catch (err) {
+    return res.status(404).send({ success: false, message: err });
+  }
+});
 module.exports = router;
